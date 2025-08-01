@@ -1,0 +1,102 @@
+[
+  {
+    "Id": 1,
+    "title": "Login page not responsive on mobile devices",
+    "description": "The login form becomes unusable on screens smaller than 768px. The input fields are cut off and the submit button is not visible. This affects user experience significantly on mobile devices.\n\nSteps to reproduce:\n1. Open login page on mobile device\n2. Try to enter credentials\n3. Notice form elements are misaligned\n\nExpected: Form should be fully responsive and usable on all screen sizes.",
+    "status": "Open",
+    "priority": "High",
+    "assignee": "Sarah Chen",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "Id": 2,
+    "title": "Add dark mode toggle to user preferences",
+    "description": "Users have requested the ability to switch between light and dark themes. This should be implemented as a toggle in the user preferences section and persist across sessions.\n\nRequirements:\n- Toggle in user preferences\n- System preference detection\n- Smooth theme transitions\n- Persistence in localStorage",
+    "status": "In Progress",
+    "priority": "Medium",
+    "assignee": "Mike Rodriguez",
+    "createdAt": "2024-01-14T14:15:00Z",
+    "updatedAt": "2024-01-16T09:20:00Z"
+  },
+  {
+    "Id": 3,
+    "title": "Database connection timeout in production",
+    "description": "Intermittent database connection timeouts are occurring in the production environment, causing 500 errors for users. This appears to happen during peak traffic hours.\n\nError logs show connection pool exhaustion. Need to investigate connection pooling settings and potentially increase pool size or optimize query performance.",
+    "status": "Open",
+    "priority": "High",
+    "assignee": "Emily Davis",
+    "createdAt": "2024-01-13T16:45:00Z",
+    "updatedAt": "2024-01-13T16:45:00Z"
+  },
+  {
+    "Id": 4,
+    "title": "Implement user activity audit trail",
+    "description": "For compliance purposes, we need to track and log all user activities within the application. This should include login/logout events, data modifications, and administrative actions.\n\nThe audit trail should be searchable and exportable for compliance reporting.",
+    "status": "Open",
+    "priority": "Medium",
+    "assignee": "Alex Johnson",
+    "createdAt": "2024-01-12T11:20:00Z",
+    "updatedAt": "2024-01-12T11:20:00Z"
+  },
+  {
+    "Id": 5,
+    "title": "Email notifications not being sent",
+    "description": "Users report not receiving email notifications for important events. The email service appears to be failing silently without proper error logging.\n\nNeed to investigate the email service configuration and add proper error handling and logging.",
+    "status": "Resolved",
+    "priority": "High",
+    "assignee": "Tom Wilson",
+    "createdAt": "2024-01-11T13:30:00Z",
+    "updatedAt": "2024-01-15T16:45:00Z"
+  },
+  {
+    "Id": 6,
+    "title": "Add bulk operations for data management",
+    "description": "Admin users need the ability to perform bulk operations on data records, including bulk delete, bulk update status, and bulk export functionality.\n\nThis will significantly improve efficiency for administrators managing large datasets.",
+    "status": "Open",
+    "priority": "Low",
+    "assignee": "Lisa Park",
+    "createdAt": "2024-01-10T09:15:00Z",
+    "updatedAt": "2024-01-10T09:15:00Z"
+  },
+  {
+    "Id": 7,
+    "title": "Search functionality returns irrelevant results",
+    "description": "The current search algorithm is returning too many irrelevant results, making it difficult for users to find what they're looking for. We need to improve the search relevance and possibly implement fuzzy matching.\n\nUsers have specifically mentioned that exact phrase searches don't work properly.",
+    "status": "In Progress",
+    "priority": "Medium",
+    "assignee": "Sarah Chen",
+    "createdAt": "2024-01-09T15:20:00Z",
+    "updatedAt": "2024-01-14T10:30:00Z"
+  },
+  {
+    "Id": 8,
+    "title": "Add file upload progress indicator",
+    "description": "When users upload large files, there's no indication of upload progress, leading to confusion about whether the upload is working. We should add a progress bar and upload status indicators.\n\nThis is especially important for users with slower internet connections.",
+    "status": "Open",
+    "priority": "Low",
+    "assignee": "Mike Rodriguez",
+    "createdAt": "2024-01-08T12:45:00Z",
+    "updatedAt": "2024-01-08T12:45:00Z"
+  },
+  {
+    "Id": 9,
+    "title": "Performance issues with large datasets",
+    "description": "The application becomes slow and unresponsive when loading pages with large amounts of data. We need to implement pagination, virtual scrolling, or lazy loading to improve performance.\n\nThis is particularly noticeable on the reports page when displaying more than 1000 records.",
+    "status": "Open",
+    "priority": "High",
+    "assignee": "Emily Davis",
+    "createdAt": "2024-01-07T14:10:00Z",
+    "updatedAt": "2024-01-07T14:10:00Z"
+  },
+  {
+    "Id": 10,
+    "title": "Add keyboard shortcuts for power users",
+    "description": "Power users have requested keyboard shortcuts for common actions to improve their workflow efficiency. This should include shortcuts for navigation, creating new items, and performing bulk actions.\n\nSuggested shortcuts:\n- Ctrl+N: New item\n- Ctrl+S: Save\n- Ctrl+/: Open search\n- Esc: Close modals",
+    "status": "Closed",
+    "priority": "Low",
+    "assignee": "Alex Johnson",
+    "createdAt": "2024-01-06T16:30:00Z",
+    "updatedAt": "2024-01-12T14:20:00Z"
+  }
+]
