@@ -41,6 +41,12 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [errors, setErrors] = useState({});
+  
+  // Comments state
+  const [comments, setComments] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   // Initialize form data when issue changes
   useEffect(() => {
@@ -58,6 +64,9 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
       });
       setHasChanges(false);
       setErrors({});
+      
+      // Load comments for this issue
+      loadComments(issue.Id);
     }
   }, [issue]);
 
@@ -144,6 +153,52 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
       setIsSaving(false);
     }
   };
+// Load comments for the issue
+  const loadComments = async (issueId) => {
+    if (!issueId) return;
+    
+    setLoadingComments(true);
+    try {
+      const commentService = (await import('@/services/api/commentService')).default;
+      const issueComments = await commentService.getByIssueId(issueId);
+      setComments(issueComments);
+    } catch (error) {
+      console.error("Error loading comments:", error);
+      toast.error("Failed to load comments");
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  // Handle new comment submission
+  const handleSubmitComment = async (e) => {
+    e.preventDefault();
+    
+    if (!newComment.trim()) {
+      toast.error("Please enter a comment");
+      return;
+    }
+
+    setSubmittingComment(true);
+    try {
+      const commentService = (await import('@/services/api/commentService')).default;
+      const createdComment = await commentService.create({
+        issueId: formData.Id,
+        content: newComment,
+        author: "Current User",
+        authorEmail: "user@example.com"
+      });
+      
+      setComments(prev => [...prev, createdComment]);
+      setNewComment('');
+      toast.success("Comment added successfully");
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      toast.error("Failed to add comment");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
 
   // Handle delete
   const handleDelete = async () => {
@@ -157,7 +212,6 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
       toast.error("Failed to delete issue");
     }
   };
-
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -256,7 +310,7 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
               </div>
 
               {/* Content */}
-              <div className="flex flex-col lg:flex-row h-[calc(90vh-140px)]">
+<div className="flex flex-col lg:flex-row h-[calc(90vh-140px)]">
                 {/* Main Content */}
                 <div className="flex-1 p-6 overflow-y-auto">
                   <div className="space-y-6">
@@ -313,6 +367,106 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
                           ))}
                         </Select>
                       </div>
+                    </div>
+
+                    {/* Comments Section */}
+                    <div className="border-t pt-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <ApperIcon name="MessageSquare" size={18} className="text-gray-600" />
+                        <h3 className="text-lg font-medium text-gray-900">
+                          Comments ({comments.length})
+                        </h3>
+                      </div>
+
+                      {/* Comments Timeline */}
+                      <div className="space-y-4 mb-6">
+                        {loadingComments ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                            <span className="ml-2 text-sm text-gray-600">Loading comments...</span>
+                          </div>
+                        ) : comments.length === 0 ? (
+                          <div className="text-center py-8 text-gray-500">
+                            <ApperIcon name="MessageSquare" size={24} className="mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No comments yet. Be the first to comment!</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {comments.map((comment) => (
+                              <motion.div
+                                key={comment.Id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex gap-3 p-4 bg-gray-50 rounded-lg"
+                              >
+                                <UserAvatar 
+                                  name={comment.author} 
+                                  email={comment.authorEmail}
+                                  size="sm"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-medium text-gray-900 text-sm">
+                                      {comment.author}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {format(new Date(comment.createdAt), 'MMM d, yyyy at h:mm a')}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                    {comment.content}
+                                  </p>
+                                  {comment.updatedAt && comment.updatedAt !== comment.createdAt && (
+                                    <span className="text-xs text-gray-400 mt-1 block">
+                                      (edited)
+                                    </span>
+                                  )}
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* New Comment Form */}
+                      <form onSubmit={handleSubmitComment} className="space-y-3">
+                        <div className="flex gap-3">
+                          <UserAvatar 
+                            name="Current User" 
+                            email="user@example.com"
+                            size="sm"
+                          />
+                          <div className="flex-1">
+                            <Textarea
+                              value={newComment}
+                              onChange={(e) => setNewComment(e.target.value)}
+                              placeholder="Add a comment..."
+                              rows={3}
+                              className="w-full resize-none"
+                              disabled={submittingComment}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
+                          <Button
+                            type="submit"
+                            disabled={!newComment.trim() || submittingComment}
+                            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {submittingComment ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Adding...
+                              </>
+                            ) : (
+                              <>
+                                <ApperIcon name="Send" size={16} className="mr-2" />
+                                Add Comment
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </form>
                     </div>
                   </div>
                 </div>
