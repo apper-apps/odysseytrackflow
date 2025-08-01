@@ -122,9 +122,17 @@ const issueService = {
       throw new Error("Issue not found");
     }
     
-    const deletedIssue = mockIssues.splice(index, 1)[0];
+const deletedIssue = mockIssues.splice(index, 1)[0];
     return { ...deletedIssue };
   },
+
+  // Get issues by project ID
+  getIssuesByProjectId(projectId) {
+    if (typeof projectId !== 'number') {
+      return [];
+    }
+    return mockIssues.filter(issue => issue.projectId === projectId);
+  }
 };
 
 export default issueService;

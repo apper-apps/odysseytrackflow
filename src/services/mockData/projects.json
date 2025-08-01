@@ -1,0 +1,42 @@
+[
+  {
+    "Id": 1,
+    "name": "TrackFlow Platform",
+    "description": "Core issue tracking and project management platform with real-time collaboration features and advanced reporting capabilities.",
+    "projectLead": "Sarah Chen",
+    "createdAt": "2024-01-01T08:00:00Z",
+    "updatedAt": "2024-01-16T14:30:00Z"
+  },
+  {
+    "Id": 2,
+    "name": "Mobile App Development",
+    "description": "Native mobile applications for iOS and Android platforms, providing seamless issue management on the go.",
+    "projectLead": "Mike Rodriguez",
+    "createdAt": "2024-01-05T10:15:00Z",
+    "updatedAt": "2024-01-15T16:20:00Z"
+  },
+  {
+    "Id": 3,
+    "name": "Security & Compliance",
+    "description": "Implementation of enterprise-grade security features, audit trails, and compliance reporting for regulated industries.",
+    "projectLead": "Emily Davis",
+    "createdAt": "2024-01-08T09:30:00Z",
+    "updatedAt": "2024-01-14T11:45:00Z"
+  },
+  {
+    "Id": 4,
+    "name": "Performance Optimization",
+    "description": "Database optimization, caching strategies, and performance improvements to handle large-scale deployments efficiently.",
+    "projectLead": "Alex Johnson",
+    "createdAt": "2024-01-10T13:20:00Z",
+    "updatedAt": "2024-01-12T15:10:00Z"
+  },
+  {
+    "Id": 5,
+    "name": "User Experience Redesign",
+    "description": "Complete UI/UX overhaul focusing on accessibility, user workflows, and modern design principles.",
+    "projectLead": "Lisa Park",
+    "createdAt": "2024-01-12T11:00:00Z",
+    "updatedAt": "2024-01-16T09:30:00Z"
+  }
+]
