@@ -247,8 +247,7 @@ const issueService = {
       throw error;
     }
   },
-
-  async delete(id) {
+async delete(id) {
     try {
       const params = {
         RecordIds: [parseInt(id)]
@@ -278,6 +277,95 @@ const issueService = {
         console.error("Error deleting issue:", error?.response?.data?.message);
       } else {
         console.error("Error deleting issue:", error.message);
+      }
+      throw error;
+    }
+  },
+
+  async getTimelineEvents(issueId) {
+    try {
+      const params = {
+        fields: [
+          {
+            field: {
+              Name: "Name"
+            }
+          },
+          {
+            field: {
+              Name: "issueId"
+            }
+          },
+          {
+            field: {
+              Name: "author"
+            }
+          },
+          {
+            field: {
+              Name: "authorEmail"
+            }
+          },
+          {
+            field: {
+              Name: "content"
+            }
+          },
+          {
+            field: {
+              Name: "createdAt"
+            }
+          },
+          {
+            field: {
+              Name: "CreatedOn"
+            }
+          }
+        ],
+        where: [
+          {
+            FieldName: "issueId",
+            Operator: "EqualTo",
+            Values: [parseInt(issueId)]
+          }
+        ],
+        orderBy: [
+          {
+            fieldName: "createdAt",
+            sorttype: "ASC"
+          }
+        ]
+      };
+
+      const response = await apperClient.fetchRecords('app_Comment', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      if (!response.data || response.data.length === 0) {
+        return [];
+      }
+
+      // Transform comment data into timeline events format
+      const timelineEvents = response.data.map(comment => ({
+        id: comment.Id,
+        type: 'comment',
+        author: comment.author || 'Unknown',
+        authorEmail: comment.authorEmail || '',
+        content: comment.content || '',
+        timestamp: comment.createdAt || comment.CreatedOn,
+        eventType: 'comment_added',
+        message: comment.content
+      }));
+
+      return timelineEvents;
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error fetching timeline events:", error?.response?.data?.message);
+      } else {
+        console.error("Error fetching timeline events:", error.message);
       }
       throw error;
     }
