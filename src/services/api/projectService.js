@@ -1,152 +1,291 @@
-import mockProjects from '@/services/mockData/projects.json';
-import issueService from '@/services/api/issueService';
-
-// Create a mutable copy of the mock data
-let projects = [...mockProjects];
-
-// Helper function to simulate API delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// Initialize ApperClient
+const { ApperClient } = window.ApperSDK;
+const apperClient = new ApperClient({
+  apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+  apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+});
 
 // Helper function to calculate project statistics
-const calculateProjectStats = (project) => {
-  const projectIssues = issueService.getIssuesByProjectId(project.Id);
-  const totalIssues = projectIssues.length;
-  const resolvedIssues = projectIssues.filter(issue => 
-    issue.status === 'Resolved' || issue.status === 'Closed'
-  ).length;
-  const progress = totalIssues > 0 ? (resolvedIssues / totalIssues) * 100 : 0;
+const calculateProjectStats = async (project) => {
+  try {
+    // Get issues for this project to calculate statistics
+    const issueParams = {
+      fields: [
+        { field: { Name: "status" } },
+        { field: { Name: "projectId" } }
+      ],
+      where: [
+        {
+          FieldName: "projectId",
+          Operator: "EqualTo",
+          Values: [project.Id]
+        }
+      ]
+    };
 
-  return {
-    ...project,
-    totalIssues,
-    resolvedIssues,
-    progress
-  };
+    const issueResponse = await apperClient.fetchRecords('issue', issueParams);
+    const projectIssues = issueResponse.success ? issueResponse.data || [] : [];
+    
+    const totalIssues = projectIssues.length;
+    const resolvedIssues = projectIssues.filter(issue => 
+      issue.status === 'Resolved' || issue.status === 'Closed'
+    ).length;
+    const progress = totalIssues > 0 ? (resolvedIssues / totalIssues) * 100 : 0;
+
+    return {
+      ...project,
+      totalIssues,
+      resolvedIssues,
+      progress
+    };
+  } catch (error) {
+    // If issues can't be fetched, return project without stats
+    return {
+      ...project,
+      totalIssues: 0,
+      resolvedIssues: 0,
+      progress: 0
+    };
+  }
 };
 
 const projectService = {
-  // Get all projects with statistics
   async getAll() {
-    await delay(300);
-    return projects.map(calculateProjectStats);
+    try {
+      const params = {
+        fields: [
+          { field: { Name: "Name" } },
+          { field: { Name: "description" } },
+          { field: { Name: "projectLead" } },
+          { field: { Name: "createdAt" } },
+          { field: { Name: "updatedAt" } },
+          { field: { Name: "Tags" } },
+          { field: { Name: "Owner" } },
+          { field: { Name: "CreatedOn" } },
+          { field: { Name: "CreatedBy" } },
+          { field: { Name: "ModifiedOn" } },
+          { field: { Name: "ModifiedBy" } }
+        ],
+        orderBy: [
+          { fieldName: "createdAt", sorttype: "DESC" }
+        ],
+        pagingInfo: { limit: 100, offset: 0 }
+      };
+
+      const response = await apperClient.fetchRecords('project', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      const projects = response.data || [];
+      
+      // Calculate statistics for each project
+      const projectsWithStats = await Promise.all(
+        projects.map(project => calculateProjectStats(project))
+      );
+      
+      return projectsWithStats;
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error fetching projects:", error?.response?.data?.message);
+      } else {
+        console.error("Error fetching projects:", error.message);
+      }
+      throw error;
+    }
   },
 
-  // Get project by ID with statistics
   async getById(id) {
-    await delay(200);
-    if (typeof id !== 'number') {
-      throw new Error('Project ID must be a number');
+    try {
+      const params = {
+        fields: [
+          { field: { Name: "Name" } },
+          { field: { Name: "description" } },
+          { field: { Name: "projectLead" } },
+          { field: { Name: "createdAt" } },
+          { field: { Name: "updatedAt" } },
+          { field: { Name: "Tags" } },
+          { field: { Name: "Owner" } }
+        ]
+      };
+
+      const response = await apperClient.getRecordById('project', parseInt(id), params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      const project = response.data;
+      return await calculateProjectStats(project);
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error(`Error fetching project with ID ${id}:`, error?.response?.data?.message);
+      } else {
+        console.error("Error fetching project:", error.message);
+      }
+      throw error;
     }
-    
-    const project = projects.find(p => p.Id === id);
-    if (!project) {
-      throw new Error(`Project with ID ${id} not found`);
-    }
-    
-    return calculateProjectStats(project);
   },
 
-  // Create new project
   async create(projectData) {
-    await delay(500);
-    
-    // Validate required fields
-    if (!projectData.name?.trim()) {
-      throw new Error('Project name is required');
-    }
-    if (!projectData.description?.trim()) {
-      throw new Error('Project description is required');
-    }
-    if (!projectData.projectLead?.trim()) {
-      throw new Error('Project lead is required');
-    }
+    try {
+      // Validate required fields
+      if (!projectData.name?.trim()) {
+        throw new Error('Project name is required');
+      }
+      if (!projectData.description?.trim()) {
+        throw new Error('Project description is required');
+      }
+      if (!projectData.projectLead?.trim()) {
+        throw new Error('Project lead is required');
+      }
 
-    // Generate new ID
-    const maxId = projects.length > 0 ? Math.max(...projects.map(p => p.Id)) : 0;
-    const newProject = {
-      Id: maxId + 1,
-      name: projectData.name.trim(),
-      description: projectData.description.trim(),
-      projectLead: projectData.projectLead.trim(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+      const params = {
+        records: [{
+          Name: projectData.name.trim(),
+          description: projectData.description.trim(),
+          projectLead: projectData.projectLead.trim(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          Tags: projectData.tags || ''
+        }]
+      };
 
-    projects.unshift(newProject);
-    return calculateProjectStats(newProject);
+      const response = await apperClient.createRecord('project', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      if (response.results) {
+        const successfulRecords = response.results.filter(result => result.success);
+        const failedRecords = response.results.filter(result => !result.success);
+        
+        if (failedRecords.length > 0) {
+          console.error(`Failed to create ${failedRecords.length} project records:${JSON.stringify(failedRecords)}`);
+          failedRecords.forEach(record => {
+            if (record.message) console.error(record.message);
+          });
+        }
+        
+        if (successfulRecords.length > 0) {
+          return await calculateProjectStats(successfulRecords[0].data);
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error creating project:", error?.response?.data?.message);
+      } else {
+        console.error("Error creating project:", error.message);
+      }
+      throw error;
+    }
   },
 
-  // Update existing project
   async update(id, projectData) {
-    await delay(400);
-    
-    if (typeof id !== 'number') {
-      throw new Error('Project ID must be a number');
-    }
+    try {
+      // Validate required fields
+      if (!projectData.name?.trim()) {
+        throw new Error('Project name is required');
+      }
+      if (!projectData.description?.trim()) {
+        throw new Error('Project description is required');
+      }
+      if (!projectData.projectLead?.trim()) {
+        throw new Error('Project lead is required');
+      }
 
-    const index = projects.findIndex(p => p.Id === id);
-    if (index === -1) {
-      throw new Error(`Project with ID ${id} not found`);
-    }
+      const updateFields = {
+        Name: projectData.name.trim(),
+        description: projectData.description.trim(),
+        projectLead: projectData.projectLead.trim(),
+        updatedAt: new Date().toISOString()
+      };
 
-    // Validate required fields
-    if (!projectData.name?.trim()) {
-      throw new Error('Project name is required');
-    }
-    if (!projectData.description?.trim()) {
-      throw new Error('Project description is required');
-    }
-    if (!projectData.projectLead?.trim()) {
-      throw new Error('Project lead is required');
-    }
+      if (projectData.tags !== undefined) {
+        updateFields.Tags = projectData.tags;
+      }
 
-    const updatedProject = {
-      ...projects[index],
-      name: projectData.name.trim(),
-      description: projectData.description.trim(),
-      projectLead: projectData.projectLead.trim(),
-      updatedAt: new Date().toISOString()
-    };
+      const params = {
+        records: [{
+          Id: parseInt(id),
+          ...updateFields
+        }]
+      };
 
-    projects[index] = updatedProject;
-    return calculateProjectStats(updatedProject);
+      const response = await apperClient.updateRecord('project', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      if (response.results) {
+        const successfulUpdates = response.results.filter(result => result.success);
+        const failedUpdates = response.results.filter(result => !result.success);
+        
+        if (failedUpdates.length > 0) {
+          console.error(`Failed to update ${failedUpdates.length} project records:${JSON.stringify(failedUpdates)}`);
+          failedUpdates.forEach(record => {
+            if (record.message) console.error(record.message);
+          });
+        }
+        
+        if (successfulUpdates.length > 0) {
+          return await calculateProjectStats(successfulUpdates[0].data);
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error updating project:", error?.response?.data?.message);
+      } else {
+        console.error("Error updating project:", error.message);
+      }
+      throw error;
+    }
   },
 
-  // Delete project
   async delete(id) {
-    await delay(300);
-    
-    if (typeof id !== 'number') {
-      throw new Error('Project ID must be a number');
+    try {
+      const params = {
+        RecordIds: [parseInt(id)]
+      };
+
+      const response = await apperClient.deleteRecord('project', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      if (response.results) {
+        const failedDeletions = response.results.filter(result => !result.success);
+        
+        if (failedDeletions.length > 0) {
+          console.error(`Failed to delete ${failedDeletions.length} project records:${JSON.stringify(failedDeletions)}`);
+          failedDeletions.forEach(record => {
+            if (record.message) console.error(record.message);
+          });
+        }
+        
+        return response.results.some(result => result.success);
+      }
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error deleting project:", error?.response?.data?.message);
+      } else {
+        console.error("Error deleting project:", error.message);
+      }
+      throw error;
     }
-
-    const index = projects.findIndex(p => p.Id === id);
-    if (index === -1) {
-      throw new Error(`Project with ID ${id} not found`);
-    }
-
-    const deletedProject = projects.splice(index, 1)[0];
-    return { ...deletedProject };
-  },
-
-  // Get projects by lead
-  async getProjectsByLead(leadName) {
-    await delay(250);
-    const filteredProjects = projects.filter(p => 
-      p.projectLead.toLowerCase().includes(leadName.toLowerCase())
-    );
-    return filteredProjects.map(calculateProjectStats);
-  },
-
-  // Search projects by name or description
-  async searchProjects(searchTerm) {
-    await delay(200);
-    const term = searchTerm.toLowerCase();
-    const filteredProjects = projects.filter(p => 
-      p.name.toLowerCase().includes(term) || 
-      p.description.toLowerCase().includes(term)
-    );
-    return filteredProjects.map(calculateProjectStats);
   }
 };
 

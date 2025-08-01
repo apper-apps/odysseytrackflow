@@ -1,12 +1,53 @@
-import mockIssues from "@/services/mockData/issues.json";
-
-// Simulate API delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// Initialize ApperClient
+const { ApperClient } = window.ApperSDK;
+const apperClient = new ApperClient({
+  apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+  apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+});
 
 const issueService = {
   async getAll() {
-    await delay(300);
-    return [...mockIssues].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    try {
+      const params = {
+        fields: [
+          { field: { Name: "Name" } },
+          { field: { Name: "title" } },
+          { field: { Name: "description" } },
+          { field: { Name: "status" } },
+          { field: { Name: "priority" } },
+          { field: { Name: "assignee" } },
+          { field: { Name: "createdAt" } },
+          { field: { Name: "updatedAt" } },
+          { field: { Name: "projectId" } },
+          { field: { Name: "Tags" } },
+          { field: { Name: "Owner" } },
+          { field: { Name: "CreatedOn" } },
+          { field: { Name: "CreatedBy" } },
+          { field: { Name: "ModifiedOn" } },
+          { field: { Name: "ModifiedBy" } }
+        ],
+        orderBy: [
+          { fieldName: "createdAt", sorttype: "DESC" }
+        ],
+        pagingInfo: { limit: 100, offset: 0 }
+      };
+
+      const response = await apperClient.fetchRecords('issue', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      return response.data || [];
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error fetching issues:", error?.response?.data?.message);
+      } else {
+        console.error("Error fetching issues:", error.message);
+      }
+      throw error;
+    }
   },
 
   filterIssues(issues, filters) {
@@ -16,8 +57,8 @@ const issueService = {
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       filtered = filtered.filter(issue => 
-        issue.title.toLowerCase().includes(searchLower) ||
-        issue.description.toLowerCase().includes(searchLower)
+        (issue.title && issue.title.toLowerCase().includes(searchLower)) ||
+        (issue.description && issue.description.toLowerCase().includes(searchLower))
       );
     }
 
@@ -52,7 +93,6 @@ const issueService = {
       switch (filters.quickFilter) {
         case "myIssues":
           // In a real app, this would filter by current user
-          // For now, we'll just return the filtered results
           break;
         case "openIssues":
           filtered = filtered.filter(issue => issue.status === "Open");
@@ -70,140 +110,177 @@ const issueService = {
   },
 
   async getById(id) {
-    await delay(200);
-    const issue = mockIssues.find(issue => issue.Id === parseInt(id));
-    if (!issue) {
-      throw new Error("Issue not found");
+    try {
+      const params = {
+        fields: [
+          { field: { Name: "Name" } },
+          { field: { Name: "title" } },
+          { field: { Name: "description" } },
+          { field: { Name: "status" } },
+          { field: { Name: "priority" } },
+          { field: { Name: "assignee" } },
+          { field: { Name: "createdAt" } },
+          { field: { Name: "updatedAt" } },
+          { field: { Name: "projectId" } },
+          { field: { Name: "Tags" } },
+          { field: { Name: "Owner" } }
+        ]
+      };
+
+      const response = await apperClient.getRecordById('issue', parseInt(id), params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      return response.data;
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error(`Error fetching issue with ID ${id}:`, error?.response?.data?.message);
+      } else {
+        console.error("Error fetching issue:", error.message);
+      }
+      throw error;
     }
-    return { ...issue };
   },
 
   async create(issueData) {
-    await delay(400);
-    
-    const maxId = Math.max(...mockIssues.map(issue => issue.Id), 0);
-    const newIssue = {
-      Id: maxId + 1,
-      title: issueData.title,
-      description: issueData.description,
-      status: "Open",
-      priority: issueData.priority,
-      assignee: issueData.assignee,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    mockIssues.unshift(newIssue);
-    return { ...newIssue };
+    try {
+      const params = {
+        records: [{
+          Name: issueData.title || '',
+          title: issueData.title || '',
+          description: issueData.description || '',
+          status: issueData.status || 'Open',
+          priority: issueData.priority || 'Medium',
+          assignee: issueData.assignee || '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          projectId: issueData.projectId ? parseInt(issueData.projectId) : null,
+          Tags: issueData.tags || ''
+        }]
+      };
+
+      const response = await apperClient.createRecord('issue', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      if (response.results) {
+        const successfulRecords = response.results.filter(result => result.success);
+        const failedRecords = response.results.filter(result => !result.success);
+        
+        if (failedRecords.length > 0) {
+          console.error(`Failed to create ${failedRecords.length} issue records:${JSON.stringify(failedRecords)}`);
+          failedRecords.forEach(record => {
+            if (record.message) console.error(record.message);
+          });
+        }
+        
+        return successfulRecords.length > 0 ? successfulRecords[0].data : null;
+      }
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error creating issue:", error?.response?.data?.message);
+      } else {
+        console.error("Error creating issue:", error.message);
+      }
+      throw error;
+    }
   },
 
-async update(id, issueData) {
-    await delay(350);
-    
-    const index = mockIssues.findIndex(issue => issue.Id === parseInt(id));
-    if (index === -1) {
-      throw new Error("Issue not found");
-    }
-    
-    const oldIssue = { ...mockIssues[index] };
-    
-    mockIssues[index] = {
-      ...mockIssues[index],
-      ...issueData,
-      updatedAt: new Date().toISOString(),
-    };
-    
-    // Generate timeline events for changes
-    Object.keys(issueData).forEach(key => {
-      if (oldIssue[key] !== issueData[key]) {
-        let eventType = `${key}_changed`;
-        
-        // Map field names to event types
-        if (key === 'status') eventType = 'status_changed';
-        else if (key === 'priority') eventType = 'priority_changed';
-        else if (key === 'assignee') eventType = 'assignee_changed';
-        else if (key === 'title') eventType = 'title_changed';
-        else if (key === 'description') eventType = 'description_changed';
-        
-        this.generateTimelineEvent(id, eventType, {
-          oldValue: oldIssue[key],
-          newValue: issueData[key]
-        });
+  async update(id, issueData) {
+    try {
+      const updateFields = {};
+      
+      // Only include updateable fields
+      if (issueData.title !== undefined) updateFields.title = issueData.title;
+      if (issueData.description !== undefined) updateFields.description = issueData.description;
+      if (issueData.status !== undefined) updateFields.status = issueData.status;
+      if (issueData.priority !== undefined) updateFields.priority = issueData.priority;
+      if (issueData.assignee !== undefined) updateFields.assignee = issueData.assignee;
+      if (issueData.projectId !== undefined) updateFields.projectId = issueData.projectId ? parseInt(issueData.projectId) : null;
+      if (issueData.tags !== undefined) updateFields.Tags = issueData.tags;
+      
+      // Always update the updatedAt field
+      updateFields.updatedAt = new Date().toISOString();
+      
+      // Update Name to match title for consistency
+      if (issueData.title !== undefined) updateFields.Name = issueData.title;
+
+      const params = {
+        records: [{
+          Id: parseInt(id),
+          ...updateFields
+        }]
+      };
+
+      const response = await apperClient.updateRecord('issue', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
       }
-    });
-    
-    return { ...mockIssues[index] };
+
+      if (response.results) {
+        const successfulUpdates = response.results.filter(result => result.success);
+        const failedUpdates = response.results.filter(result => !result.success);
+        
+        if (failedUpdates.length > 0) {
+          console.error(`Failed to update ${failedUpdates.length} issue records:${JSON.stringify(failedUpdates)}`);
+          failedUpdates.forEach(record => {
+            if (record.message) console.error(record.message);
+          });
+        }
+        
+        return successfulUpdates.length > 0 ? successfulUpdates[0].data : null;
+      }
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error updating issue:", error?.response?.data?.message);
+      } else {
+        console.error("Error updating issue:", error.message);
+      }
+      throw error;
+    }
   },
 
   async delete(id) {
-    await delay(250);
-    
-    const index = mockIssues.findIndex(issue => issue.Id === parseInt(id));
-    if (index === -1) {
-      throw new Error("Issue not found");
-    }
-    
-const deletedIssue = mockIssues.splice(index, 1)[0];
-    return { ...deletedIssue };
-  },
+    try {
+      const params = {
+        RecordIds: [parseInt(id)]
+      };
 
-// Get issues by project ID
-  getIssuesByProjectId(projectId) {
-    if (typeof projectId !== 'number') {
-      return [];
-    }
-    return mockIssues.filter(issue => issue.projectId === projectId);
-  },
-
-  // Timeline events storage
-  timelineEvents: new Map(),
-
-  // Generate timeline event
-  generateTimelineEvent(issueId, eventType, data = {}) {
-    const event = {
-      id: Date.now() + Math.random(),
-      issueId: parseInt(issueId),
-      eventType,
-      timestamp: new Date().toISOString(),
-      user: data.user || 'Current User',
-      oldValue: data.oldValue,
-      newValue: data.newValue,
-      description: data.description
-    };
-
-    if (!this.timelineEvents.has(issueId)) {
-      this.timelineEvents.set(issueId, []);
-    }
-    
-    this.timelineEvents.get(issueId).unshift(event);
-    return event;
-  },
-
-  // Get timeline events for an issue
-  async getTimelineEvents(issueId) {
-    await delay(150);
-    
-    const events = this.timelineEvents.get(parseInt(issueId)) || [];
-    
-    // If no events exist, create initial creation event
-    if (events.length === 0) {
-      const issue = mockIssues.find(issue => issue.Id === parseInt(issueId));
-      if (issue) {
-        this.generateTimelineEvent(issueId, 'created', {
-          user: issue.reporter || 'System',
-          timestamp: issue.createdAt
-        });
-        // Update the timestamp of the creation event
-        const createdEvent = this.timelineEvents.get(parseInt(issueId))[0];
-        if (createdEvent) {
-          createdEvent.timestamp = issue.createdAt;
-        }
+      const response = await apperClient.deleteRecord('issue', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
       }
+
+      if (response.results) {
+        const failedDeletions = response.results.filter(result => !result.success);
+        
+        if (failedDeletions.length > 0) {
+          console.error(`Failed to delete ${failedDeletions.length} issue records:${JSON.stringify(failedDeletions)}`);
+          failedDeletions.forEach(record => {
+            if (record.message) console.error(record.message);
+          });
+        }
+        
+        return response.results.some(result => result.success);
+      }
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error deleting issue:", error?.response?.data?.message);
+      } else {
+        console.error("Error deleting issue:", error.message);
+      }
+      throw error;
     }
-    
-    return [...(this.timelineEvents.get(parseInt(issueId)) || [])].sort(
-      (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
-    );
   }
 };
 

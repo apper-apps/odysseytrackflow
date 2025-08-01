@@ -1,108 +1,181 @@
-// Mock comment data
-const mockComments = [
-  {
-    Id: 1,
-    issueId: 1,
-    author: "John Doe",
-    authorEmail: "john.doe@example.com",
-    content: "I've started investigating this issue. It seems to be related to the authentication flow.",
-    createdAt: "2024-01-15T09:30:00Z"
-  },
-  {
-    Id: 2,
-    issueId: 1,
-    author: "Jane Smith",
-    authorEmail: "jane.smith@example.com",
-    content: "Thanks John. I've noticed similar issues in the production logs. Let me know if you need access to the error tracking dashboard.",
-    createdAt: "2024-01-15T11:45:00Z"
-  },
-  {
-    Id: 3,
-    issueId: 2,
-    author: "Mike Johnson",
-    authorEmail: "mike.johnson@example.com",
-    content: "The mobile layout looks good on iOS, but there are some spacing issues on Android devices. I'll create a fix for this.",
-    createdAt: "2024-01-14T16:20:00Z"
-  },
-  {
-    Id: 4,
-    issueId: 1,
-    author: "Sarah Wilson",
-    authorEmail: "sarah.wilson@example.com",
-    content: "I've deployed a potential fix to staging. Can someone test the authentication flow and confirm if the issue is resolved?",
-    createdAt: "2024-01-16T08:15:00Z"
-  }
-];
-
-let nextId = 5;
-
-// Simulate API delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// Initialize ApperClient
+const { ApperClient } = window.ApperSDK;
+const apperClient = new ApperClient({
+  apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+  apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+});
 
 const commentService = {
-  // Get all comments for a specific issue
   async getByIssueId(issueId) {
-    await delay(300);
-    const comments = mockComments
-      .filter(comment => comment.issueId === parseInt(issueId))
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-    return [...comments];
+    try {
+      const params = {
+        fields: [
+          { field: { Name: "Name" } },
+          { field: { Name: "issueId" } },
+          { field: { Name: "author" } },
+          { field: { Name: "authorEmail" } },
+          { field: { Name: "content" } },
+          { field: { Name: "createdAt" } },
+          { field: { Name: "Tags" } },
+          { field: { Name: "Owner" } },
+          { field: { Name: "CreatedOn" } },
+          { field: { Name: "CreatedBy" } },
+          { field: { Name: "ModifiedOn" } },
+          { field: { Name: "ModifiedBy" } }
+        ],
+        where: [
+          {
+            FieldName: "issueId",
+            Operator: "EqualTo",
+            Values: [parseInt(issueId)]
+          }
+        ],
+        orderBy: [
+          { fieldName: "createdAt", sorttype: "ASC" }
+        ]
+      };
+
+      const response = await apperClient.fetchRecords('app_Comment', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      return response.data || [];
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error fetching comments:", error?.response?.data?.message);
+      } else {
+        console.error("Error fetching comments:", error.message);
+      }
+      throw error;
+    }
   },
 
-  // Create a new comment
   async create(commentData) {
-    await delay(500);
-    
-    if (!commentData.issueId || !commentData.content?.trim()) {
-      throw new Error('Issue ID and content are required');
+    try {
+      if (!commentData.issueId || !commentData.content?.trim()) {
+        throw new Error('Issue ID and content are required');
+      }
+
+      const params = {
+        records: [{
+          Name: `Comment by ${commentData.author || 'User'}`,
+          issueId: parseInt(commentData.issueId),
+          author: commentData.author || "Current User",
+          authorEmail: commentData.authorEmail || "user@example.com",
+          content: commentData.content.trim(),
+          createdAt: new Date().toISOString()
+        }]
+      };
+
+      const response = await apperClient.createRecord('app_Comment', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      if (response.results) {
+        const successfulRecords = response.results.filter(result => result.success);
+        const failedRecords = response.results.filter(result => !result.success);
+        
+        if (failedRecords.length > 0) {
+          console.error(`Failed to create ${failedRecords.length} comment records:${JSON.stringify(failedRecords)}`);
+          failedRecords.forEach(record => {
+            if (record.message) console.error(record.message);
+          });
+        }
+        
+        return successfulRecords.length > 0 ? successfulRecords[0].data : null;
+      }
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error creating comment:", error?.response?.data?.message);
+      } else {
+        console.error("Error creating comment:", error.message);
+      }
+      throw error;
     }
-
-    const newComment = {
-      Id: nextId++,
-      issueId: parseInt(commentData.issueId),
-      author: commentData.author || "Current User",
-      authorEmail: commentData.authorEmail || "user@example.com",
-      content: commentData.content.trim(),
-      createdAt: new Date().toISOString()
-    };
-
-    mockComments.push(newComment);
-    return { ...newComment };
   },
 
-  // Update a comment
   async update(id, updateData) {
-    await delay(400);
-    
-    const commentIndex = mockComments.findIndex(comment => comment.Id === parseInt(id));
-    if (commentIndex === -1) {
-      throw new Error('Comment not found');
+    try {
+      if (!updateData.content?.trim()) {
+        throw new Error('Content is required');
+      }
+
+      const params = {
+        records: [{
+          Id: parseInt(id),
+          content: updateData.content.trim()
+        }]
+      };
+
+      const response = await apperClient.updateRecord('app_Comment', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      if (response.results) {
+        const successfulUpdates = response.results.filter(result => result.success);
+        const failedUpdates = response.results.filter(result => !result.success);
+        
+        if (failedUpdates.length > 0) {
+          console.error(`Failed to update ${failedUpdates.length} comment records:${JSON.stringify(failedUpdates)}`);
+          failedUpdates.forEach(record => {
+            if (record.message) console.error(record.message);
+          });
+        }
+        
+        return successfulUpdates.length > 0 ? successfulUpdates[0].data : null;
+      }
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error updating comment:", error?.response?.data?.message);
+      } else {
+        console.error("Error updating comment:", error.message);
+      }
+      throw error;
     }
-
-    if (!updateData.content?.trim()) {
-      throw new Error('Content is required');
-    }
-
-    mockComments[commentIndex] = {
-      ...mockComments[commentIndex],
-      content: updateData.content.trim(),
-      updatedAt: new Date().toISOString()
-    };
-
-    return { ...mockComments[commentIndex] };
   },
 
-  // Delete a comment
   async delete(id) {
-    await delay(300);
-    
-    const commentIndex = mockComments.findIndex(comment => comment.Id === parseInt(id));
-    if (commentIndex === -1) {
-      throw new Error('Comment not found');
-    }
+    try {
+      const params = {
+        RecordIds: [parseInt(id)]
+      };
 
-    mockComments.splice(commentIndex, 1);
-    return { success: true };
+      const response = await apperClient.deleteRecord('app_Comment', params);
+      
+      if (!response.success) {
+        console.error(response.message);
+        throw new Error(response.message);
+      }
+
+      if (response.results) {
+        const failedDeletions = response.results.filter(result => !result.success);
+        
+        if (failedDeletions.length > 0) {
+          console.error(`Failed to delete ${failedDeletions.length} comment records:${JSON.stringify(failedDeletions)}`);
+          failedDeletions.forEach(record => {
+            if (record.message) console.error(record.message);
+          });
+        }
+        
+        return response.results.some(result => result.success);
+      }
+    } catch (error) {
+      if (error?.response?.data?.message) {
+        console.error("Error deleting comment:", error?.response?.data?.message);
+      } else {
+        console.error("Error deleting comment:", error.message);
+      }
+      throw error;
+    }
   }
 };
 

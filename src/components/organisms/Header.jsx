@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useSelector } from 'react-redux';
 import ApperIcon from "@/components/ApperIcon";
 import UserAvatar from "@/components/molecules/UserAvatar";
-
+import { AuthContext } from "../../App";
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -13,17 +14,24 @@ const Header = () => {
     { path: "/reports", label: "Reports", icon: "BarChart3" },
   ];
 
-  const currentUser = {
-    name: "Alex Johnson",
-    email: "alex@trackflow.com",
-    avatar: null
-  };
+const { user, isAuthenticated } = useSelector((state) => state.user);
+  const { logout } = useContext(AuthContext);
 
   const isActive = (path) => {
     if (path === "/" && location.pathname === "/") return true;
     if (path !== "/" && location.pathname.startsWith(path)) return true;
     return false;
   };
+
+  const handleLogout = async () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      await logout();
+    }
+  };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <header className="bg-white border-b border-gray-200">
@@ -55,12 +63,19 @@ const Header = () => {
             ))}
           </nav>
 
-          {/* User Avatar */}
+          {/* User Avatar & Logout */}
           <div className="flex items-center gap-3">
-            <UserAvatar user={currentUser} size="md" />
+            <UserAvatar user={user} size="md" />
             <div className="hidden sm:block">
-              <p className="text-sm font-medium text-gray-900">{currentUser.name}</p>
+              <p className="text-sm font-medium text-gray-900">{user?.firstName || user?.name || 'User'}</p>
             </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ApperIcon name="LogOut" className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
         </div>
       </div>

@@ -115,8 +115,10 @@ useEffect(() => {
 const handleCreateIssue = async (issueData) => {
     try {
       const newIssue = await issueService.create(issueData);
-      setAllIssues(prev => [newIssue, ...prev]);
-      toast.success("Issue created successfully!");
+      if (newIssue) {
+        setAllIssues(prev => [newIssue, ...prev]);
+        toast.success("Issue created successfully!");
+      }
     } catch (err) {
       toast.error("Failed to create issue");
       console.error("Error creating issue:", err);
@@ -128,30 +130,22 @@ const handleCreateIssue = async (issueData) => {
     setSelectedIssue(issue);
   };
 
-const handleSort = (field, direction) => {
+  const handleSort = (field, direction) => {
     setSortField(field);
     setSortDirection(direction);
     
     const sortedIssues = [...filteredIssues].sort((a, b) => {
-      let aValue = a[field];
-      let bValue = b[field];
-      
-      // Handle different data types
-      if (field === "createdAt" || field === "updatedAt") {
-        aValue = new Date(aValue);
-        bValue = new Date(bValue);
-      } else if (field === "Id") {
-        aValue = parseInt(aValue);
-        bValue = parseInt(bValue);
-      } else if (typeof aValue === "string") {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
+      const aValue = a[field];
+      const bValue = b[field];
       
       if (direction === "asc") {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+        if (aValue < bValue) return -1;
+        if (aValue > bValue) return 1;
+        return 0;
       } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+        if (aValue > bValue) return -1;
+        if (aValue < bValue) return 1;
+        return 0;
       }
     });
     
@@ -162,10 +156,23 @@ const handleSort = (field, direction) => {
     loadIssues();
   };
 
-  if (loading) return <Loading />;
-  if (error) return <Error message={error} onRetry={handleRetry} />;
+// Handle issue updates (for IssueDetailModal)
+  const handleIssueUpdate = async (issueId, updateData) => {
+    try {
+      const updatedIssue = await issueService.update(issueId, updateData);
+      if (updatedIssue) {
+        setAllIssues(prev => prev.map(issue => 
+          issue.Id === issueId ? updatedIssue : issue
+        ));
+        toast.success("Issue updated successfully!");
+      }
+    } catch (err) {
+      toast.error("Failed to update issue");
+      console.error("Error updating issue:", err);
+    }
+  };
 
-return (
+  return (
     <div className="flex h-full">
       {/* Filter Sidebar */}
       <FilterSidebar
@@ -223,9 +230,9 @@ return (
               title={allIssues.length === 0 ? "No issues found" : "No matching issues"}
               description={allIssues.length === 0 
                 ? "Get started by creating your first issue to track bugs, features, and tasks."
-                : "Try adjusting your filters to find what you're looking for."
+: "Try adjusting your filters to find what you're looking for."
               }
-actionLabel={allIssues.length === 0 ? "Create Issue" : "Clear Filters"}
+              actionLabel={allIssues.length === 0 ? "Create Issue" : "Clear Filters"}
               onAction={allIssues.length === 0 ? () => setIsCreateModalOpen(true) : clearAllFilters}
             />
           ) : (
@@ -252,10 +259,11 @@ actionLabel={allIssues.length === 0 ? "Create Issue" : "Clear Filters"}
         onSubmit={handleCreateIssue}
       />
 
-      <IssueDetailModal
+<IssueDetailModal
         issue={selectedIssue}
         isOpen={!!selectedIssue}
         onClose={() => setSelectedIssue(null)}
+        onUpdate={handleIssueUpdate}
       />
     </div>
   );
