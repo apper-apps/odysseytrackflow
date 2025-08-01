@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import FilterSidebar from "@/components/organisms/FilterSidebar";
 import issueService from "@/services/api/issueService";
 import ApperIcon from "@/components/ApperIcon";
+import FilterSidebar from "@/components/organisms/FilterSidebar";
 import IssueTable from "@/components/organisms/IssueTable";
 import CreateIssueModal from "@/components/organisms/CreateIssueModal";
 import FloatingActionButton from "@/components/organisms/FloatingActionButton";
@@ -228,7 +228,7 @@ return (
               actionLabel={allIssues.length === 0 ? "Create Issue" : "Clear Filters"}
               onAction={allIssues.length === 0 ? () => setIsCreateModalOpen(true) : clearAllFilters}
             />
-          ) : (
+) : (
             <IssueTable
               issues={filteredIssues}
               onIssueClick={handleIssueClick}
@@ -237,11 +237,13 @@ return (
               sortDirection={sortDirection}
             />
           )}
-
-          {/* Floating Action Button */}
+        </div>
+        {/* Floating Action Button Container */}
+        <div className="fixed bottom-6 right-6 z-fab">
           <FloatingActionButton onClick={() => setIsCreateModalOpen(true)} />
-
-          {/* Modals */}
+        </div>
+        
+        {/* Create Issue Modal */}
           <CreateIssueModal
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}
