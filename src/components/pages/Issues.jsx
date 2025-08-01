@@ -225,10 +225,10 @@ return (
                 ? "Get started by creating your first issue to track bugs, features, and tasks."
                 : "Try adjusting your filters to find what you're looking for."
               }
-              actionLabel={allIssues.length === 0 ? "Create Issue" : "Clear Filters"}
+actionLabel={allIssues.length === 0 ? "Create Issue" : "Clear Filters"}
               onAction={allIssues.length === 0 ? () => setIsCreateModalOpen(true) : clearAllFilters}
             />
-) : (
+          ) : (
             <IssueTable
               issues={filteredIssues}
               onIssueClick={handleIssueClick}
@@ -238,25 +238,25 @@ return (
             />
           )}
         </div>
-        {/* Floating Action Button Container */}
-        <div className="fixed bottom-6 right-6 z-fab">
-          <FloatingActionButton onClick={() => setIsCreateModalOpen(true)} />
-        </div>
-        
-        {/* Create Issue Modal */}
-          <CreateIssueModal
-            isOpen={isCreateModalOpen}
-            onClose={() => setIsCreateModalOpen(false)}
-            onSubmit={handleCreateIssue}
-          />
-
-          <IssueDetailModal
-            issue={selectedIssue}
-            isOpen={!!selectedIssue}
-            onClose={() => setSelectedIssue(null)}
-          />
-        </div>
       </div>
+
+      {/* Floating Action Button Container */}
+      <div className="fixed bottom-6 right-6 z-fab">
+        <FloatingActionButton onClick={() => setIsCreateModalOpen(true)} />
+      </div>
+      
+      {/* Create Issue Modal */}
+      <CreateIssueModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateIssue}
+      />
+
+      <IssueDetailModal
+        issue={selectedIssue}
+        isOpen={!!selectedIssue}
+        onClose={() => setSelectedIssue(null)}
+      />
     </div>
   );
 };
