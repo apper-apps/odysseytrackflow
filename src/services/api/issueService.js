@@ -9,6 +9,66 @@ const issueService = {
     return [...mockIssues].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   },
 
+  filterIssues(issues, filters) {
+    let filtered = [...issues];
+
+    // Apply search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(issue => 
+        issue.title.toLowerCase().includes(searchLower) ||
+        issue.description.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply status filters
+    if (filters.statuses && filters.statuses.length > 0) {
+      filtered = filtered.filter(issue => filters.statuses.includes(issue.status));
+    }
+
+    // Apply priority filters
+    if (filters.priorities && filters.priorities.length > 0) {
+      filtered = filtered.filter(issue => filters.priorities.includes(issue.priority));
+    }
+
+    // Apply assignee filter
+    if (filters.assignee) {
+      filtered = filtered.filter(issue => issue.assignee === filters.assignee);
+    }
+
+    // Apply date range filter
+    if (filters.dateRange && (filters.dateRange.start || filters.dateRange.end)) {
+      filtered = filtered.filter(issue => {
+        const issueDate = new Date(issue.createdAt);
+        const startDate = filters.dateRange.start ? new Date(filters.dateRange.start) : new Date(0);
+        const endDate = filters.dateRange.end ? new Date(filters.dateRange.end) : new Date();
+        
+        return issueDate >= startDate && issueDate <= endDate;
+      });
+    }
+
+    // Apply quick filters
+    if (filters.quickFilter) {
+      switch (filters.quickFilter) {
+        case "myIssues":
+          // In a real app, this would filter by current user
+          // For now, we'll just return the filtered results
+          break;
+        case "openIssues":
+          filtered = filtered.filter(issue => issue.status === "Open");
+          break;
+        case "highPriority":
+          filtered = filtered.filter(issue => issue.priority === "High");
+          break;
+        case "recentlyUpdated":
+          filtered = filtered.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+          break;
+      }
+    }
+
+    return filtered;
+  },
+
   async getById(id) {
     await delay(200);
     const issue = mockIssues.find(issue => issue.Id === parseInt(id));
