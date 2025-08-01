@@ -78,8 +78,8 @@ export default {
         'fab': '0 4px 12px rgb(0 0 0 / 0.15)',
         'card': '0 2px 4px rgb(0 0 0 / 0.06)',
       },
-      zIndex: {
-        'fab': '1000',
+zIndex: {
+        'fab': '50',
         'modal': '1050',
         'tooltip': '1070',
       },
