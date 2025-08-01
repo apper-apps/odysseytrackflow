@@ -2,11 +2,14 @@ import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
+import Timeline from "@/components/molecules/Timeline";
 import issueService from "@/services/api/issueService";
+import commentService from "@/services/api/commentService";
 import ApperIcon from "@/components/ApperIcon";
 import StatusBadge from "@/components/molecules/StatusBadge";
 import PriorityIndicator from "@/components/molecules/PriorityIndicator";
 import UserAvatar from "@/components/molecules/UserAvatar";
+import Loading from "@/components/ui/Loading";
 import Textarea from "@/components/atoms/Textarea";
 import Input from "@/components/atoms/Input";
 import Button from "@/components/atoms/Button";
@@ -41,34 +44,55 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [errors, setErrors] = useState({});
-  
   // Comments state
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
+// Missing state for timeline
+  const [timelineEvents, setTimelineEvents] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+
   // Initialize form data when issue changes
   useEffect(() => {
     if (issue) {
       setFormData({
         Id: issue.Id,
-        title: issue.title || "",
-        description: issue.description || "",
-        status: issue.status || "Open",
-        priority: issue.priority || "Medium",
-        assignee: issue.assignee || "",
-        reporter: issue.reporter || "Unknown",
+        title: issue.title || '',
+        description: issue.description || '',
+        status: issue.status || 'Open',
+        priority: issue.priority || 'Medium',
+        assignee: issue.assignee || '',
         createdAt: issue.createdAt,
         updatedAt: issue.updatedAt
       });
       setHasChanges(false);
       setErrors({});
-      
-      // Load comments for this issue
-      loadComments(issue.Id);
     }
   }, [issue]);
+
+  // Load comments and timeline when modal opens
+  useEffect(() => {
+    if (isOpen && issue) {
+      loadComments(issue.Id);
+      loadTimeline(issue.Id);
+    }
+  }, [isOpen, issue]);
+
+  // Load timeline events
+  const loadTimeline = async (issueId) => {
+    try {
+      setTimelineLoading(true);
+      const events = await issueService.getTimelineEvents(issueId);
+      setTimelineEvents(events);
+    } catch (error) {
+      console.error('Failed to load timeline:', error);
+      setTimelineEvents([]);
+    } finally {
+      setTimelineLoading(false);
+    }
+  };
 
   // Auto-save functionality
   const triggerAutoSave = useCallback(() => {
@@ -108,7 +132,7 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
     triggerAutoSave();
   };
 
-  // Validate form
+// Validate form
   const validateForm = () => {
     const newErrors = {};
     
@@ -119,7 +143,7 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
     if (!formData.description?.trim()) {
       newErrors.description = "Description is required";
     }
-
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -139,6 +163,16 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
         ...formData,
         updatedAt: new Date().toISOString()
       });
+      
+      // Update local state
+      setFormData(prev => ({
+        ...prev,
+        ...updatedIssue,
+        updatedAt: updatedIssue.updatedAt
+      }));
+      
+      // Reload timeline to show new events
+      await loadTimeline(issue.Id);
       
       setHasChanges(false);
       if (showToast) {
@@ -233,7 +267,6 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
       }
     };
   }, [isOpen, onClose, autoSaveTimeout]);
-
   if (!issue) return null;
 
   return (
@@ -503,26 +536,16 @@ function IssueDetailModal({ issue, isOpen, onClose }) {
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-medium text-gray-900 mb-4">
+<h3 className="text-sm font-medium text-gray-900 mb-4">
                         Timeline
                       </h3>
-                      <div className="space-y-3">
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Created</div>
-                          <div className="text-sm text-gray-900">
-                            {formData.createdAt ? format(new Date(formData.createdAt), "MMM d, yyyy 'at' h:mm a") : "Unknown"}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            by {formData.reporter}
-                          </div>
+                      {timelineLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
                         </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Last Updated</div>
-                          <div className="text-sm text-gray-900">
-                            {formData.updatedAt ? format(new Date(formData.updatedAt), "MMM d, yyyy 'at' h:mm a") : "Never"}
-                          </div>
-                        </div>
-                      </div>
+                      ) : (
+                        <Timeline events={timelineEvents} />
+                      )}
                     </div>
                   </div>
                 </div>

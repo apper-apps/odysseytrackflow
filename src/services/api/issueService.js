@@ -97,7 +97,7 @@ const issueService = {
     return { ...newIssue };
   },
 
-  async update(id, issueData) {
+async update(id, issueData) {
     await delay(350);
     
     const index = mockIssues.findIndex(issue => issue.Id === parseInt(id));
@@ -105,11 +105,32 @@ const issueService = {
       throw new Error("Issue not found");
     }
     
+    const oldIssue = { ...mockIssues[index] };
+    
     mockIssues[index] = {
       ...mockIssues[index],
       ...issueData,
       updatedAt: new Date().toISOString(),
     };
+    
+    // Generate timeline events for changes
+    Object.keys(issueData).forEach(key => {
+      if (oldIssue[key] !== issueData[key]) {
+        let eventType = `${key}_changed`;
+        
+        // Map field names to event types
+        if (key === 'status') eventType = 'status_changed';
+        else if (key === 'priority') eventType = 'priority_changed';
+        else if (key === 'assignee') eventType = 'assignee_changed';
+        else if (key === 'title') eventType = 'title_changed';
+        else if (key === 'description') eventType = 'description_changed';
+        
+        this.generateTimelineEvent(id, eventType, {
+          oldValue: oldIssue[key],
+          newValue: issueData[key]
+        });
+      }
+    });
     
     return { ...mockIssues[index] };
   },
@@ -126,12 +147,63 @@ const deletedIssue = mockIssues.splice(index, 1)[0];
     return { ...deletedIssue };
   },
 
-  // Get issues by project ID
+// Get issues by project ID
   getIssuesByProjectId(projectId) {
     if (typeof projectId !== 'number') {
       return [];
     }
     return mockIssues.filter(issue => issue.projectId === projectId);
+  },
+
+  // Timeline events storage
+  timelineEvents: new Map(),
+
+  // Generate timeline event
+  generateTimelineEvent(issueId, eventType, data = {}) {
+    const event = {
+      id: Date.now() + Math.random(),
+      issueId: parseInt(issueId),
+      eventType,
+      timestamp: new Date().toISOString(),
+      user: data.user || 'Current User',
+      oldValue: data.oldValue,
+      newValue: data.newValue,
+      description: data.description
+    };
+
+    if (!this.timelineEvents.has(issueId)) {
+      this.timelineEvents.set(issueId, []);
+    }
+    
+    this.timelineEvents.get(issueId).unshift(event);
+    return event;
+  },
+
+  // Get timeline events for an issue
+  async getTimelineEvents(issueId) {
+    await delay(150);
+    
+    const events = this.timelineEvents.get(parseInt(issueId)) || [];
+    
+    // If no events exist, create initial creation event
+    if (events.length === 0) {
+      const issue = mockIssues.find(issue => issue.Id === parseInt(issueId));
+      if (issue) {
+        this.generateTimelineEvent(issueId, 'created', {
+          user: issue.reporter || 'System',
+          timestamp: issue.createdAt
+        });
+        // Update the timestamp of the creation event
+        const createdEvent = this.timelineEvents.get(parseInt(issueId))[0];
+        if (createdEvent) {
+          createdEvent.timestamp = issue.createdAt;
+        }
+      }
+    }
+    
+    return [...(this.timelineEvents.get(parseInt(issueId)) || [])].sort(
+      (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+    );
   }
 };
 
